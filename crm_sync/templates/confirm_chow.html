@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Confirm — change of ownership{% endblock %}
+{% block body %}
+
+<p><a href="{{ url_for('item', community_name=it.community_name) }}">← back</a></p>
+<h1>Confirm: change of ownership</h1>
+<p>{{ it.community_name }} — existing account <b>{{ it.crm_account_name }}</b>
+   ({{ old_id }}), parent <b>{{ crm.parent_name or crm.parent_id }}</b>,
+   lifetime revenue {{ '%0.0f' % (crm.lifetime_revenue or 0) }},
+   outstanding AR {{ '%0.0f' % (crm.outstanding_ar or 0) }}.</p>
+
+<h2>1. Create the new account</h2>
+<p class="counts"><code>POST /api/v1/accounts</code></p>
+<pre class="payload">{{ create_body | tojson(indent=2) }}</pre>
+
+<h2>2. Link the old account (automatic, right after)</h2>
+<p class="counts"><code>PATCH /api/v1/accounts/{{ old_id }}</code></p>
+<pre class="payload">{ "chow_current_account": "&lt;id of the account created in step 1&gt;" }</pre>
+
+<p class="dim">The old account's parent, revenue and AR are left untouched.</p>
+
+{% if dry_run %}
+<p class="banner dry">DRY RUN — both operations are logged, nothing is sent to the CRM.</p>
+{% endif %}
+
+<form method="post" action="{{ url_for('chow', community_name=it.community_name) }}">
+  <input type="hidden" name="confirmed" value="1">
+  {% for k, val in create_body.items() %}
+    {% if k == 'billing_street' %}<input type="hidden" name="address" value="{{ val }}">
+    {% elif k == 'billing_city' %}<input type="hidden" name="city" value="{{ val }}">
+    {% elif k == 'billing_state' %}<input type="hidden" name="state" value="{{ val }}">
+    {% elif k == 'billing_zip' %}<input type="hidden" name="zip" value="{{ val }}">
+    {% elif k == 'care_type' %}<input type="hidden" name="care_choice" value="{{ val }}">
+    {% elif k == 'name' %}<input type="hidden" name="name" value="{{ val }}">
+    {% endif %}
+  {% endfor %}
+  <button type="submit" class="go">{{ 'Log both (dry run)' if dry_run else 'Create + link in CRM' }}</button>
+  <a class="btn" href="{{ url_for('item', community_name=it.community_name) }}">Cancel</a>
+</form>
+
+{% endblock %}

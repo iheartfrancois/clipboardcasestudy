@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}CRM Review{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+<header>
+  <a class="brand" href="{{ url_for('index') }}">CRM Review</a>
+  <nav>
+    <a href="{{ url_for('index') }}">Queue</a>
+    <a href="{{ url_for('audit') }}">Audit log</a>
+  </nav>
+  <span class="meta">
+    {% if stats.last_sync %}last sync {{ stats.last_sync[:16].replace('T',' ') }} UTC{% else %}never synced{% endif %}
+  </span>
+</header>
+
+{% if dry_run %}
+<div class="banner dry">DRY RUN — CRM writes are logged, not sent. Unset CRM_SYNC_DRY_RUN to go live.</div>
+{% endif %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="flash {{ cat }}">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<main>
+{% block body %}{% endblock %}
+</main>
+</body>
+</html>

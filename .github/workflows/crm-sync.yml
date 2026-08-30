@@ -1,0 +1,46 @@
+name: CRM Sync Snapshot
+
+on:
+  schedule:
+    # 13:35 UTC daily - offset from the job-digest workflow (13:00).
+    - cron: "35 13 * * *"
+  workflow_dispatch: {}
+
+# Needed to commit the refreshed snapshot back to the repo.
+permissions:
+  contents: write
+
+concurrency:
+  group: crm-sync
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run the comparison and write the snapshot
+        env:
+          CRM_API_TOKEN: ${{ secrets.CRM_API_TOKEN }}
+        run: python -m crm_sync.pipeline --write-snapshot data/crm_snapshot.json
+
+      - name: Commit the snapshot if it changed
+        if: always()
+        run: |
+          git config user.name "job-tracker-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/crm_snapshot.json
+          if git diff --staged --quiet; then
+            echo "No snapshot changes to commit."
+          else
+            git commit -m "Update CRM comparison snapshot [skip ci]"
+            git push
+          fi

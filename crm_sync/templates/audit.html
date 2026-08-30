@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block body %}
+<h1>Audit log</h1>
+<p class="dim">Every reviewer decision. Rows tagged <b>DRY-RUN</b> were rehearsed only —
+   nothing was sent to the CRM. <code>reject</code> rows never touch the CRM.</p>
+<table>
+  <thead><tr><th>When (UTC)</th><th>Community</th><th>Action</th><th>Sent to CRM?</th><th>Payload</th><th>Response</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    {% set is_dry = r.action.startswith('DRY-RUN') %}
+    <tr {% if is_dry %}class="dry-row"{% endif %}>
+      <td>{{ r.ts[:19].replace('T',' ') }}</td>
+      <td>{{ r.community_name }}</td>
+      <td>{{ r.action }}</td>
+      <td>{% if is_dry %}<b>no (dry run)</b>{% elif r.action == 'reject' %}no (local only){% elif r.api_status %}yes · {{ r.api_status }}{% else %}—{% endif %}</td>
+      <td><code>{{ r.payload_json or '' }}</code></td>
+      <td><code class="clip">{{ r.api_response or '' }}</code></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if not rows %}<p class="dim">Nothing yet.</p>{% endif %}
+{% endblock %}

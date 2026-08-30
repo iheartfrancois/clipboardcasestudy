@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Confirm — {{ it.community_name }}{% endblock %}
+{% block body %}
+
+<p><a href="{{ url_for('item', community_name=it.community_name) }}">← back</a></p>
+<h1>Confirm CRM write</h1>
+<p>{{ it.community_name }}{% if it.crm_account_name %} → <b>{{ it.crm_account_name }}</b>{% endif %}</p>
+
+<p class="counts"><code>{{ method }} {{ target }}</code></p>
+
+<pre class="payload">{{ payload | tojson(indent=2) }}</pre>
+
+{% if dry_run %}
+<p class="banner dry">DRY RUN — this will be logged, not sent to the CRM.</p>
+{% endif %}
+
+<form method="post" action="{{ url_for('apply', community_name=it.community_name) }}">
+  <input type="hidden" name="mode" value="{{ mode }}">
+  <input type="hidden" name="confirmed" value="1">
+  {% for f, d in decisions.items() %}
+    <input type="hidden" name="decision__{{ f }}" value="{{ 'approve' if d == 'approved' else 'reject' }}">
+  {% endfor %}
+  {% if care_choice %}<input type="hidden" name="care_choice" value="{{ care_choice }}">{% endif %}
+  {% if mode == 'status' %}<input type="hidden" name="status" value="{{ payload.status }}">{% endif %}
+  {% if mode == 'create' %}
+    {% for k, val in payload.items() %}
+      {% if k == 'billing_street' %}<input type="hidden" name="address" value="{{ val }}">
+      {% elif k == 'billing_city' %}<input type="hidden" name="city" value="{{ val }}">
+      {% elif k == 'billing_state' %}<input type="hidden" name="state" value="{{ val }}">
+      {% elif k == 'billing_zip' %}<input type="hidden" name="zip" value="{{ val }}">
+      {% elif k == 'care_type' %}<input type="hidden" name="care_choice" value="{{ val }}">
+      {% elif k == 'name' %}<input type="hidden" name="name" value="{{ val }}">
+      {% elif k == 'status' %}<input type="hidden" name="status" value="{{ val }}">
+      {% elif k == 'parent_id' %}<input type="hidden" name="parent_id" value="{{ val }}">
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+  <button type="submit" class="go">{{ 'Log it (dry run)' if dry_run else 'Send to CRM' }}</button>
+  <a class="btn" href="{{ url_for('item', community_name=it.community_name) }}">Cancel</a>
+</form>
+
+{% endblock %}

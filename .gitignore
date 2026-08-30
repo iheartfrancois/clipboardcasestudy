@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local run artifacts
+*.log
+
+# Secrets — never commit the CRM token
+.env
+
+# Local review decisions & audit log (workflow state, not shared).
+# The shareable artifact is data/crm_snapshot.json, which IS committed.
+data/crm_review.db
+
+# Regenerable outputs
+communities.csv
+crm_comparison.csv
+
+# macOS
+.DS_Store

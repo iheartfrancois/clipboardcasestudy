@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+{% block title %}{{ it.community_name }}{% endblock %}
+{% block body %}
+
+<p class="row-between">
+  <a href="{{ url_for('index') }}">← queue</a>
+  {% if nav %}
+  <span class="dim">
+    {% if nav.prev %}<a href="{{ url_for('item', community_name=nav.prev) }}">← prev</a>{% endif %}
+    <b>{{ nav.pos }} of {{ nav.total }}</b> in “{{ nav.tier }}”
+    {% if nav.next %}<a href="{{ url_for('item', community_name=nav.next) }}">skip to next →</a>{% endif %}
+  </span>
+  {% endif %}
+</p>
+<h1>{{ it.community_name }}</h1>
+<p class="counts">
+  <span class="pill">{{ it.classification }}</span>
+  <span class="pill">{{ it.status }}</span>
+  {% if it.crm_url %}<a href="{{ it.crm_url }}" target="_blank" rel="noopener">open in CRM ↗</a>{% endif %}
+</p>
+{% if it.details %}<p class="dim">{{ it.details }}</p>{% endif %}
+{% if it.note %}<p class="dim">note: {{ it.note }}</p>{% endif %}
+
+{% if it.status in ('applied', 'rejected', 'resolved_upstream', 'rehearsed') %}
+  {% if it.status == 'rehearsed' %}
+    <p><b>Rehearsed in dry run</b> — this decision is not saved and nothing was
+       sent to the CRM. It leaves the queue for this session; "Run comparison
+       now", an app restart, or <i>Bring them back</i> on the queue page
+       restores it.</p>
+  {% else %}
+    <p>This item is <b>{{ it.status }}</b>.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('reopen', community_name=it.community_name) }}">
+    <button type="submit">Re-open for review</button>
+  </form>
+
+{% elif it.classification == 'needs update' %}
+  <h2>Proposed field changes</h2>
+  <form method="post" action="{{ url_for('apply', community_name=it.community_name) }}">
+    <input type="hidden" name="mode" value="patch">
+    <table class="diff">
+      <thead><tr><th>Field</th><th>CRM now</th><th>Scraped (proposed)</th><th>Decision</th></tr></thead>
+      <tbody>
+      {% for p in it.proposals %}
+        <tr>
+          <td><b>{{ p.field }}</b></td>
+          <td class="old">{{ p.crm_value or '—' }}</td>
+          <td class="new">
+            {% if p.field == 'care offerings' %}
+              {{ p.scraped_value }}<br>
+              <label>set care_type to
+                <select name="care_choice">
+                  {% for c in (p.care_candidates or []) %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                  {% for c in care_types %}
+                    {% if c not in (p.care_candidates or []) %}<option value="{{ c }}">{{ c }}</option>{% endif %}
+                  {% endfor %}
+                </select>
+              </label>
+            {% else %}
+              {{ p.scraped_value or '—' }}
+            {% endif %}
+          </td>
+          <td class="decide">
+            <label><input type="radio" name="decision__{{ p.field }}" value="approve" checked> approve</label>
+            <label><input type="radio" name="decision__{{ p.field }}" value="reject"> reject</label>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit">Review payload →</button>
+  </form>
+
+  <form method="post" action="{{ url_for('reject', community_name=it.community_name) }}" class="reject-form">
+    <input type="text" name="note" placeholder="reason (optional)">
+    <button type="submit" class="danger">Reject all</button>
+  </form>
+
+{% elif it.classification == 'chow' %}
+  <h2>Change of ownership — create a new account</h2>
+  <p class="dim">
+    The existing CRM account <b>{{ it.crm_account_name }}</b> ({{ it.crm_account_id }})
+    is under the wrong parent (<b>{{ it.crm_view.parent_name or it.crm_view.parent_id }}</b>)
+    and carries financial history — lifetime revenue
+    <b>{{ '%0.0f' % (it.crm_view.lifetime_revenue or 0) }}</b>, outstanding AR
+    <b>{{ '%0.0f' % (it.crm_view.outstanding_ar or 0) }}</b>.
+    Its parent will <b>not</b> be changed. Instead, create a new account with the
+    scraped data under Bellhaven Senior Living; the old account's
+    <code>chow_current_account</code> is then set to the new account's ID automatically.
+  </p>
+
+  <form method="post" action="{{ url_for('chow', community_name=it.community_name) }}" class="create-form">
+    {% for p in it.proposals %}
+      {% set fname = {'name':'name','address':'address','city':'city','state':'state','zip':'zip'}.get(p.field) %}
+      {% if fname %}
+        <label>{{ p.field }}
+          <input type="text" name="{{ fname }}" value="{{ p.scraped_value }}">
+        </label>
+      {% elif p.field == 'care offerings' %}
+        <label>care_type
+          <select name="care_choice">
+            {% for c in (p.care_candidates or []) %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            {% for c in care_types %}
+              {% if c not in (p.care_candidates or []) %}<option value="{{ c }}">{{ c }}</option>{% endif %}
+            {% endfor %}
+          </select>
+          <span class="dim">(scraped: {{ p.scraped_value }})</span>
+        </label>
+      {% endif %}
+    {% endfor %}
+    <p class="dim">new account: status <b>Active</b>, parent <b>Bellhaven Senior Living</b> ({{ bellhaven_parent }})</p>
+    <button type="submit">Review the two operations →</button>
+  </form>
+
+  <form method="post" action="{{ url_for('reject', community_name=it.community_name) }}" class="reject-form">
+    <input type="text" name="note" placeholder="reason (optional)">
+    <button type="submit" class="danger">Reject (handle manually)</button>
+  </form>
+
+{% elif it.classification == 'stale' %}
+  <h2>No website match — change the account status</h2>
+  <p class="dim">
+    This CRM account is under the Bellhaven Senior Living parent but no community
+    on the website matches its name — it is likely closed or defunct.
+  </p>
+  <table class="diff">
+    <tbody>
+      <tr><td><b>account</b></td><td>{{ it.crm_account_name }} ({{ it.crm_account_id }})</td></tr>
+      <tr><td><b>address</b></td><td>{{ it.crm_view.address or '—' }}, {{ it.crm_view.city }} {{ it.crm_view.state }} {{ it.crm_view.zip }}</td></tr>
+      <tr><td><b>care type</b></td><td>{{ it.crm_view.care_type or '—' }}</td></tr>
+      <tr><td><b>current status</b></td><td>{{ it.crm_view.status or '—' }}</td></tr>
+      <tr><td><b>lifetime revenue</b></td><td>{{ '%0.0f' % (it.crm_view.lifetime_revenue or 0) }}</td></tr>
+      <tr><td><b>outstanding AR</b></td><td>{{ '%0.0f' % (it.crm_view.outstanding_ar or 0) }}</td></tr>
+    </tbody>
+  </table>
+
+  <form method="post" action="{{ url_for('apply', community_name=it.community_name) }}" class="create-form">
+    <input type="hidden" name="mode" value="status">
+    <label>set status to
+      <select name="status">
+        {% for s in status_choices %}
+          <option value="{{ s }}"{% if loop.first %} selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Review payload →</button>
+  </form>
+
+  <form method="post" action="{{ url_for('reject', community_name=it.community_name) }}" class="reject-form">
+    <input type="text" name="note" placeholder="reason (optional)">
+    <button type="submit" class="danger">Keep as-is</button>
+  </form>
+
+  <h2>Other CRM accounts that may be the same community</h2>
+  {% if it.possible_matches %}
+  <p class="dim">Same address, same city/state, or a close name. For context only —
+     the action above still just changes this account's status.</p>
+  {% for c in it.possible_matches %}
+    <div class="dupe">
+      <p class="row-between">
+        <span><b>{{ c.name }}</b> ({{ c.account_id }}) —
+          {{ c.match_count }}/6 fields match — {{ c.reasons | join(', ') }}</span>
+        {% if crm_url(c.account_id) %}
+          <a class="btn" href="{{ crm_url(c.account_id) }}" target="_blank" rel="noopener">View in CRM ↗</a>
+        {% endif %}
+      </p>
+      <table class="diff">
+        <thead><tr><th>field</th><th>this account ({{ it.crm_account_name }})</th><th>{{ c.name }}</th><th></th></tr></thead>
+        <tbody>
+        {% for row in c.field_comparison %}
+          <tr>
+            <td><b>{{ row.field }}</b></td>
+            <td>{{ row.target or '—' }}</td>
+            <td>{{ row.candidate or '—' }}</td>
+            <td>{{ '✓ match' if row.match else '✗ differ' }}</td>
+          </tr>
+        {% endfor %}
+          <tr><td><b>parent</b></td><td>{{ it.crm_view.parent_name or it.crm_view.parent_id }}</td>
+              <td>{{ c.parent_name or c.parent_id or '—' }}</td><td></td></tr>
+          <tr><td><b>status</b></td><td>{{ it.crm_view.status }}</td><td>{{ c.status }}</td><td></td></tr>
+          <tr><td><b>lifetime revenue</b></td><td>{{ '%0.0f' % (it.crm_view.lifetime_revenue or 0) }}</td>
+              <td>{{ '%0.0f' % (c.lifetime_revenue or 0) }}</td><td></td></tr>
+          <tr><td><b>outstanding AR</b></td><td>{{ '%0.0f' % (it.crm_view.outstanding_ar or 0) }}</td>
+              <td>{{ '%0.0f' % (c.outstanding_ar or 0) }}</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
+  {% else %}
+  <p class="dim">No other CRM account looks like the same community.</p>
+  {% endif %}
+
+{% elif it.classification == 'duplicate' %}
+  <h2>Possible duplicate accounts</h2>
+  <p class="dim">{{ it.possible_matches|length }} CRM accounts share the same
+     address, city, state and zip: <b>{{ it.crm_account_name }}</b>.</p>
+
+  <form method="post" action="{{ url_for('dedupe', community_name=it.community_name) }}">
+    <input type="hidden" name="mode" value="active">
+    <table class="candidates">
+      <thead><tr>
+        <th>Keep active</th><th>Name</th><th>ID</th><th>Address</th><th>City</th>
+        <th>State</th><th>Zip</th><th>Care type</th><th>Parent</th><th>Status</th>
+        <th>Lifetime rev</th><th>Outstanding AR</th><th>duplicate_of</th><th>Updated</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for a in it.possible_matches %}
+        <tr>
+          <td><input type="radio" name="primary_id" value="{{ a.account_id }}"
+                     {% if loop.first %}checked{% endif %}></td>
+          <td><b>{{ a.name }}</b></td>
+          <td class="dim">{{ a.account_id }}</td>
+          <td>{{ a.address or '—' }}</td>
+          <td>{{ a.city or '—' }}</td>
+          <td>{{ a.state or '—' }}</td>
+          <td>{{ a.zip or '—' }}</td>
+          <td>{{ a.care_type or '—' }}</td>
+          <td>{{ a.parent_name or a.parent_id or '—' }}</td>
+          <td>{{ a.status or '—' }}</td>
+          <td>{{ '%0.0f' % (a.lifetime_revenue or 0) }}</td>
+          <td>{{ '%0.0f' % (a.outstanding_ar or 0) }}</td>
+          <td class="dim">{{ a.duplicate_of_account or '—' }}</td>
+          <td class="dim">{{ (a.updated_at or '')[:10] }}</td>
+          <td>{% if crm_url(a.account_id) %}
+            <a class="btn" href="{{ crm_url(a.account_id) }}" target="_blank" rel="noopener">View in CRM ↗</a>
+          {% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit">Keep selected as active → mark the rest
+      <code>duplicate_of</code> + Inactive</button>
+  </form>
+
+  <form method="post" action="{{ url_for('dedupe', community_name=it.community_name) }}">
+    <input type="hidden" name="mode" value="needs_review">
+    <button type="submit">Set all {{ it.possible_matches|length }} to status “Needs Review”</button>
+  </form>
+
+  <form method="post" action="{{ url_for('reject', community_name=it.community_name) }}" class="reject-form">
+    <input type="text" name="note" placeholder="reason (optional)">
+    <button type="submit" class="danger">Not duplicates — dismiss</button>
+  </form>
+
+{% elif it.classification == 'missing' %}
+  <h2>Option A — create a new CRM account</h2>
+  {% set v = {} %}
+  <form method="post" action="{{ url_for('apply', community_name=it.community_name) }}" class="create-form">
+    <input type="hidden" name="mode" value="create">
+    {% for p in it.proposals %}
+      {% set fname = {'name':'name','address':'address','city':'city','state':'state','zip':'zip'}.get(p.field) %}
+      {% if fname %}
+        <label>{{ p.field }}
+          <input type="text" name="{{ fname }}" value="{{ p.scraped_value }}">
+        </label>
+      {% elif p.field == 'care offerings' %}
+        <label>care_type
+          <select name="care_choice">
+            {% for c in (p.care_candidates or []) %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            {% for c in care_types %}
+              {% if c not in (p.care_candidates or []) %}<option value="{{ c }}">{{ c }}</option>{% endif %}
+            {% endfor %}
+          </select>
+          <span class="dim">(scraped: {{ p.scraped_value }})</span>
+        </label>
+      {% endif %}
+    {% endfor %}
+    <label>status
+      <select name="status">
+        <option value="Active" selected>Active</option>
+        <option value="Inactive">Inactive</option>
+      </select>
+    </label>
+    <label>parent_id
+      <input type="text" name="parent_id" value="{{ bellhaven_parent }}">
+      <span class="dim">Bellhaven Senior Living</span>
+    </label>
+    <button type="submit">Review payload →</button>
+  </form>
+
+  <h2>Option B — link to an existing account</h2>
+
+  <p class="dim">Scraped: <b>{{ it.community_name }}</b> — {{ it.scraped.address }},
+     {{ it.scraped.city }} {{ it.scraped.state }} {{ it.scraped.zip }}
+     — {{ it.scraped.care_offerings }}</p>
+
+  {% if it.possible_matches %}
+  <p class="dim">CRM accounts that might be the same place —
+     <b>open one in the CRM</b> to check before linking:</p>
+  <table class="candidates">
+    <thead><tr>
+      <th>Name</th><th>Address</th><th>City</th><th>State</th><th>Zip</th>
+      <th>Care type</th><th>Parent</th><th>Why</th><th></th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for m in it.possible_matches %}
+      <tr>
+        <td><b>{{ m.name }}</b></td>
+        <td>{{ m.address or '—' }}</td>
+        <td>{{ m.city or '—' }}</td>
+        <td>{{ m.state or '—' }}</td>
+        <td>{{ m.zip or '—' }}</td>
+        <td>{{ m.care_type or '—' }}</td>
+        <td>{{ m.parent_name or m.parent_id or '—' }}<br>
+            <span class="dim">{{ m.parent_id }}</span></td>
+        <td class="dim">{{ m.reasons | join(', ') }}</td>
+        <td>
+          {% if crm_url(m.account_id) %}
+            <a class="btn" href="{{ crm_url(m.account_id) }}" target="_blank" rel="noopener">View in CRM ↗</a>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('link', community_name=it.community_name) }}">
+            <input type="hidden" name="account_id" value="{{ m.account_id }}">
+            <button type="submit">Link →</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="dim">No obvious candidates by name or location — search below.</p>
+  {% endif %}
+
+  <form method="get" action="{{ url_for('item', community_name=it.community_name) }}">
+    <input type="text" name="match_q" value="{{ match_q }}" placeholder="search CRM account name">
+    <button type="submit">Search</button>
+  </form>
+  {% if match_results %}
+  <table class="candidates">
+    <thead><tr>
+      <th>Name</th><th>Address</th><th>City</th><th>State</th><th>Zip</th>
+      <th>Care type</th><th>Parent</th><th></th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for a in match_results %}
+      <tr>
+        <td><b>{{ a.name }}</b></td>
+        <td>{{ a.billing_street or '—' }}</td>
+        <td>{{ a.billing_city or '—' }}</td>
+        <td>{{ a.billing_state or '—' }}</td>
+        <td>{{ a.billing_zip or '—' }}</td>
+        <td>{{ a.care_type or '—' }}</td>
+        <td>{{ a.parent_name or a.parent_id or '—' }}<br>
+            <span class="dim">{{ a.parent_id }}</span></td>
+        <td>
+          {% if crm_url(a.account_id) %}
+            <a class="btn" href="{{ crm_url(a.account_id) }}" target="_blank" rel="noopener">View in CRM ↗</a>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('link', community_name=it.community_name) }}">
+            <input type="hidden" name="account_id" value="{{ a.account_id }}">
+            <button type="submit">Link →</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('reject', community_name=it.community_name) }}" class="reject-form">
+    <input type="text" name="note" placeholder="reason (optional)">
+    <button type="submit" class="danger">Reject (handle manually)</button>
+  </form>
+{% endif %}
+
+{% endblock %}

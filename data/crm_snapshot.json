@@ -1,0 +1,232 @@
+{
+  "counts": {
+    "chow": 0,
+    "duplicate": 0,
+    "good": 32,
+    "missing": 0,
+    "needs update": 2,
+    "stale": 0
+  },
+  "generated_at": "2026-08-30T01:25:58.280187+00:00",
+  "results": [
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Maplewood"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of New Carlisle"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Wooster"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven Terrace of Akron"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Saline"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Goshen"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Meadville"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Defiance"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven Woods of Toledo"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Marion"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Kalamazoo"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven Court of Altoona"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven Rehabilitation & Nursing of Grove City"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven at Sycamore Ridge"
+    },
+    {
+      "classification": "good",
+      "community_name": "The Arbors at Bellhaven - Dayton"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven Healthcare Centre of Ashland"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Port Clinton"
+    },
+    {
+      "classification": "needs update",
+      "community_name": "Bellhaven Shores of Erie",
+      "crm_account_id": "001CVBBCSDM7YHN220",
+      "crm_account_name": "Bellhaven Shores of Erie",
+      "crm_view": {
+        "account_id": "001CVBBCSDM7YHN220",
+        "address": "4930 W Lake Rd",
+        "care_type": "Assisted Living",
+        "chow_current_account": "",
+        "city": "Erie",
+        "duplicate_of_account": "",
+        "lifetime_revenue": 0.0,
+        "name": "Bellhaven Shores of Erie",
+        "outstanding_ar": 0.0,
+        "parent_id": "0015QAPLGS3FVYEEEM",
+        "parent_name": "Bellhaven Senior Living (Parent Account)",
+        "state": "PA",
+        "status": "Active",
+        "updated_at": "2026-08-30 00:39:26Z",
+        "zip": "16505"
+      },
+      "details": "CRM Care Type is single-valued; scrape also lists ['Memory Care']",
+      "field_diffs": [
+        {
+          "care_candidates": [
+            "Assisted Living",
+            "Memory Care"
+          ],
+          "crm_value": "Assisted Living",
+          "field": "care offerings",
+          "scraped_value": "Assisted Living; Memory Support"
+        }
+      ],
+      "name_collision": false,
+      "name_match_score": 1.0,
+      "possible_crm_match": "closest name: Bellhaven Shores of Erie (Erie, PA) ~1.00 | same city/state in CRM: Harborview Shores of Erie (Assisted Living)",
+      "possible_matches": [],
+      "scraped": {
+        "address": "4930 W Lake Rd",
+        "care_offerings": "Assisted Living; Memory Support",
+        "city": "Erie",
+        "community_name": "Bellhaven Shores of Erie",
+        "state": "PA",
+        "zip": "16505"
+      }
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Kettering"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven Gardens of Monroe"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Tiffin"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Marietta"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven Crossings of Lima"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Zanesville"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Chagrin Falls"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven Willow Creek"
+    },
+    {
+      "classification": "needs update",
+      "community_name": "Bellhaven of Ashtabula",
+      "crm_account_id": "001NXP9X46CWEPSLSV",
+      "crm_account_name": "Bellhaven of Ashtabula",
+      "crm_view": {
+        "account_id": "001NXP9X46CWEPSLSV",
+        "address": "PO Box 517",
+        "care_type": "Skilled Nursing",
+        "chow_current_account": "",
+        "city": "Ashtabula",
+        "duplicate_of_account": "",
+        "lifetime_revenue": 0.0,
+        "name": "Bellhaven of Ashtabula",
+        "outstanding_ar": 0.0,
+        "parent_id": "0015QAPLGS3FVYEEEM",
+        "parent_name": "Bellhaven Senior Living (Parent Account)",
+        "state": "OH",
+        "status": "Active",
+        "updated_at": "2026-08-28 17:04:39Z",
+        "zip": "44004"
+      },
+      "details": "",
+      "field_diffs": [
+        {
+          "care_candidates": null,
+          "crm_value": "PO Box 517",
+          "field": "address",
+          "scraped_value": "3156 W Prospect Rd"
+        }
+      ],
+      "name_collision": false,
+      "name_match_score": 1.0,
+      "possible_crm_match": "closest name: Bellhaven of Ashtabula (Ashtabula, OH) ~1.00",
+      "possible_matches": [],
+      "scraped": {
+        "address": "3156 W Prospect Rd",
+        "care_offerings": "Short-Term Rehabilitation & Nursing",
+        "city": "Ashtabula",
+        "community_name": "Bellhaven of Ashtabula",
+        "state": "OH",
+        "zip": "44004"
+      }
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Owosso"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Portsmouth"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Batavia"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven at Union Square"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Carlisle"
+    },
+    {
+      "classification": "good",
+      "community_name": "Amberly Manor"
+    },
+    {
+      "classification": "good",
+      "community_name": "Bellhaven of Chesterton"
+    }
+  ]
+}

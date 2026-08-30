@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Review queue{% endblock %}
+{% block body %}
+
+<div class="row-between">
+  <h1>Review queue</h1>
+  <form method="post" action="{{ url_for('refresh') }}">
+    <button type="submit">Run comparison now</button>
+  </form>
+</div>
+
+<p class="counts">
+  {% for c in queue_order %}{{ groups.get(c, [])|length }} {{ tier_labels[c] }} · {% endfor %}
+  {{ stats.applied }} applied · {{ stats.rejected }} rejected
+  {% if stats.rehearsed %}· <span class="pill">{{ stats.rehearsed }} rehearsed (dry run)</span>{% endif %}
+  {% if stats.error %}· <span class="pill err">{{ stats.error }} error</span>{% endif %}
+</p>
+{% if stats.rehearsed %}
+<p class="banner dry">{{ stats.rehearsed }} item(s) rehearsed this dry-run session and hidden from the queue.
+  <a href="{{ url_for('reset_rehearsed') }}">Bring them back →</a></p>
+{% endif %}
+
+<p class="dim">Work the queue top to bottom:
+  {% for c in queue_order %}{{ tier_labels[c] }}{% if not loop.last %} → {% endif %}{% endfor %}.
+  Each tier unlocks when the one above it is clear.</p>
+
+{% set col3 = {'needs update': 'Fields to change', 'chow': 'Why', 'missing': 'Possible CRM match', 'stale': 'Why', 'duplicate': 'Accounts'} %}
+{% set headings = {'chow': 'change of ownership', 'stale': 'no website match — set status', 'duplicate': 'possible duplicates — same address'} %}
+{% for cls in queue_order %}
+  {% set items = groups.get(cls, []) %}
+  {% set is_active = (cls == active_tier) %}
+  {% set is_locked = active_tier and queue_order.index(cls) > queue_order.index(active_tier) %}
+  <h2>
+    {{ headings.get(cls, cls) }} <span class="dim">({{ items|length }})</span>
+    {% if is_active %}<span class="pill">▶ review now</span>
+    {% elif is_locked %}<span class="pill">🔒 locked</span>
+    {% elif not items %}<span class="pill">✓ clear</span>{% endif %}
+  </h2>
+  {% if not items %}
+    <p class="dim">Nothing here.</p>
+  {% elif is_locked %}
+    <p class="dim">{{ items|length }} item(s) — unlocks after
+      “{{ tier_labels.get(active_tier, active_tier) }}” is done.</p>
+  {% else %}
+  <table>
+    <thead><tr>
+      <th>Community</th><th>CRM account</th>
+      <th>{{ col3.get(cls, '') }}</th>
+      <th></th>
+    </tr></thead>
+    <tbody>
+    {% for it in items %}
+      <tr {% if it.status == 'error' %}class="err-row"{% endif %}>
+        <td><a href="{{ url_for('item', community_name=it.community_name) }}">{{ it.community_name }}</a></td>
+        <td>{{ it.crm_account_name or '—' }}</td>
+        <td>
+          {% if cls == 'needs update' %}
+            {% for f in it.fields %}<span class="tag">{{ f }}</span> {% endfor %}
+          {% elif cls == 'chow' %}
+            <span class="dim">wrong parent ({{ it.crm_view.parent_name or it.crm_view.parent_id }}),
+              revenue {{ '%0.0f' % (it.crm_view.lifetime_revenue or 0) }},
+              AR {{ '%0.0f' % (it.crm_view.outstanding_ar or 0) }}</span>
+          {% elif cls == 'stale' %}
+            <span class="dim">status {{ it.crm_view.status }},
+              rev {{ '%0.0f' % (it.crm_view.lifetime_revenue or 0) }}
+              {%- if it.details and 'suggested' in it.details %} · has a possible-match community{% endif %}</span>
+          {% elif cls == 'duplicate' %}
+            <span class="dim">{% for m in it.possible_matches %}{{ m.name }}
+              ({{ m.parent_name or m.parent_id or 'no parent' }}){% if not loop.last %}; {% endif %}{% endfor %}</span>
+          {% else %}
+            <span class="dim">{{ it.possible_crm_match or 'no candidate' }}</span>
+          {% endif %}
+        </td>
+        <td><a class="btn" href="{{ url_for('item', community_name=it.community_name) }}">Review →</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+{% endfor %}
+
+{% if done %}
+<h2 class="dim">Recently decided</h2>
+<table class="dim">
+  <tbody>
+  {% for it in done %}
+    <tr>
+      <td><a href="{{ url_for('item', community_name=it.community_name) }}">{{ it.community_name }}</a></td>
+      <td>{{ it.status }}</td>
+      <td>{{ it.note or '' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% endblock %}
